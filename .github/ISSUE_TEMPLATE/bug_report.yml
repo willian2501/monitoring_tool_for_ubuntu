@@ -1,0 +1,75 @@
+name: Bug report
+description: Report a reproducible problem with the monitoring tool.
+title: "[Bug]: "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this form for real defects in the dashboard, collector, Docker packaging, or documentation.
+  - type: textarea
+    id: summary
+    attributes:
+      label: What happened?
+      description: Describe the problem and the impact.
+      placeholder: The dashboard loads, but the Containers tab stays empty even though Docker socket access is mounted.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: List the shortest set of steps that reproduces the issue.
+      placeholder: |
+        1. Start the stack with docker compose -f docker-compose.monitoring.yml up -d --build
+        2. Open the dashboard
+        3. Go to the Containers tab
+        4. Observe the missing rows
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      placeholder: Running containers should appear within a few seconds.
+    validations:
+      required: true
+  - type: dropdown
+    id: install_type
+    attributes:
+      label: Install type
+      options:
+        - Docker already installed
+        - Docker installed from Docker official repository
+        - Docker installed from Ubuntu packages
+        - Other
+    validations:
+      required: true
+  - type: input
+    id: os
+    attributes:
+      label: Host OS
+      placeholder: Ubuntu 24.04, Debian 12, etc.
+    validations:
+      required: true
+  - type: textarea
+    id: env
+    attributes:
+      label: Relevant configuration
+      description: Share only the non-secret values that matter, such as MONITORING_PORT, CONFIG_ROOT_PATH, or whether Caddy logs are mounted.
+      render: shell
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs or screenshots
+      description: Paste the important part of docker logs monitoring_tool --tail 100 or add screenshots.
+      render: shell
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Basic checks
+      options:
+        - label: I verified docker compose version works on the host.
+        - label: I reviewed README troubleshooting before opening this issue.
+        - label: I removed secrets and private host information from this report.

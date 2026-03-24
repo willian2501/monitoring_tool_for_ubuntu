@@ -1,0 +1,42 @@
+name: Feature request
+description: Suggest an improvement that fits the scope of the monitoring tool.
+title: "[Feature]: "
+labels:
+  - enhancement
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Keep requests aligned with the repository goals: lightweight Linux host monitoring, Docker visibility, optional log analytics, and simple Docker Compose deployment.
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem are you trying to solve?
+      placeholder: I want a clearer way to see when host disk usage changed sharply over the selected range.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed change
+      placeholder: Add a compact disk-usage trend card with range-aware deltas and links to the existing storage diagnostics.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      placeholder: I currently inspect the storage tables manually, but they do not show the trend clearly.
+  - type: textarea
+    id: scope
+    attributes:
+      label: Scope and constraints
+      description: Mention Linux distro assumptions, Docker setup, reverse-proxy/log expectations, or reasons the feature should stay dependency-light.
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before submitting
+      options:
+        - label: This request does not depend on hardcoded personal domains, usernames, or paths.
+        - label: This request does not reintroduce built-in Firebase or OTP authentication.
+        - label: I checked existing issues to avoid duplicates.

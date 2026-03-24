@@ -107,7 +107,11 @@ The application runtime is built inside the Docker image. The `requirements.txt`
 
 Everything needed to install and run this project should be on this GitHub page.
 
-If you already have Docker working on the host, follow the shortest path below.
+Choose the path that matches your host:
+
+- use `Fast path` if Docker is already installed and `docker compose version` works
+- use `Full Ubuntu path` if you still need to install Docker from Docker's official apt repository
+- use `Detailed step-by-step reference` if you want the same setup broken into smaller checks
 
 ### Fast path: Docker already installed
 
@@ -235,6 +239,10 @@ Then open:
 http://<YOUR_SERVER_IP>:8080
 ```
 
+### Detailed step-by-step reference
+
+Use this if you prefer the setup in smaller checkpoints instead of the shorter copy-paste blocks above.
+
 ### 1. Install host prerequisites
 
 On Ubuntu, install the base packages first:
@@ -302,22 +310,18 @@ python3 -m venv .venv
 .venv/bin/pip install -r requirements.txt
 ```
 
-### 4. Review what does and does not need to be installed
+You do not need to run `npm install`, and you do not need a host Node.js runtime for normal container usage.
 
-- you do not need to run `npm install`
-- you do not need Node.js or Python installed on the host just to run the container
-- the virtualenv `pip install -r requirements.txt` step is optional and currently installs nothing
+The virtualenv `pip install -r requirements.txt` step is optional and currently installs nothing. The Docker build handles the application runtime for you.
 
-The Docker build handles the application runtime for you.
-
-### 5. Create the environment file
+### 4. Create the environment file
 
 ```bash
 cd /opt/linux-host-monitor/docker-compose
 cp .env.example .env
 ```
 
-### 6. Edit the host-specific values
+### 5. Edit the host-specific values
 
 ```bash
 nano /opt/linux-host-monitor/docker-compose/.env
@@ -326,28 +330,28 @@ nano /opt/linux-host-monitor/docker-compose/.env
 At minimum, review:
 
 - `MONITORING_PORT`
-- `HOST_CADDY_LOG_DIR`
 - `HOST_CONTAINER_LOG_ROOT`
 - `CONFIG_ROOT_PATH`
-- `SELECTED_LOG_CONTAINERS`
+
+Review `HOST_CADDY_LOG_DIR` and `SELECTED_LOG_CONTAINERS` only if you want log analytics or container log tails.
 
 If you do not use Caddy, you can still run the tool. Access-log panels will simply stay empty unless `HOST_CADDY_LOG_DIR` points to JSON logs.
 
-### 7. Start the container
+### 6. Start the container
 
 ```bash
 cd /opt/linux-host-monitor/docker-compose
 docker compose -f docker-compose.monitoring.yml up -d --build
 ```
 
-### 8. Confirm the container is running
+### 7. Confirm the container is running
 
 ```bash
 docker compose -f /opt/linux-host-monitor/docker-compose/docker-compose.monitoring.yml ps
 docker logs monitoring_tool --tail 50
 ```
 
-### 9. Open the dashboard
+### 8. Open the dashboard
 
 Open `http://<host>:8080` or the port defined by `MONITORING_PORT`.
 
