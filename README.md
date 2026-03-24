@@ -1,5 +1,16 @@
 # Linux Host Monitor for Ubuntu
 
+![Linux](https://img.shields.io/badge/platform-Linux-0f172a?style=for-the-badge&logo=linux&logoColor=white)
+![Docker](https://img.shields.io/badge/runtime-Docker-0ea5e9?style=for-the-badge&logo=docker&logoColor=white)
+![Node.js](https://img.shields.io/badge/backend-Node.js-15803d?style=for-the-badge&logo=nodedotjs&logoColor=white)
+![Zero deps](https://img.shields.io/badge/runtime_deps-zero-7c3aed?style=for-the-badge)
+
+Lightweight self-hosted monitoring for Ubuntu and other Linux Docker hosts, focused on host health, container visibility, storage diagnostics, and optional log analytics.
+
+## Screenshot
+
+![Dashboard preview](docs/assets/dashboard-preview.svg)
+
 ## Overview
 
 Linux Host Monitor for Ubuntu is a lightweight monitoring dashboard for Linux machines that run Docker.
@@ -16,6 +27,14 @@ The project is designed to stay simple:
 - no npm runtime dependencies
 - no built-in Firebase or OTP authentication layer
 - no production-specific domains or host paths in the published package
+
+## Highlights
+
+- single-container deployment
+- host and container observability in one page
+- optional reverse-proxy log analytics
+- config explorer for mounted Compose and Caddy files
+- admin-focused design without bundled auth lock-in
 
 ## What It Monitors
 

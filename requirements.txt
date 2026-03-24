@@ -1,0 +1,12 @@
+# This repository has no Python package dependencies.
+#
+# The runtime is bundled in the container image and consists of:
+# - nginx
+# - Node.js
+# - the application code in this repository
+#
+# Host-level requirements are documented in README.md and include:
+# - Linux
+# - Docker Engine
+# - access to /var/run/docker.sock
+# - readable host mounts for /proc, /sys, and /
