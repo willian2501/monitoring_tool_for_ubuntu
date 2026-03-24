@@ -105,6 +105,85 @@ The application runtime is built inside the Docker image. The `requirements.txt`
 
 ## Install and Quick Start
 
+Everything needed to install and run this project should be on this GitHub page.
+
+If you already have Docker working on the host, follow the shortest path below.
+
+### Fast path: Docker already installed
+
+```bash
+sudo apt update
+sudo apt install -y git ca-certificates curl python3 python3-pip python3-venv
+
+cd /opt
+sudo git clone https://github.com/willian2501/monitoring_tool_for_ubuntu.git linux-host-monitor
+cd /opt/linux-host-monitor
+
+python3 -m venv .venv
+. .venv/bin/activate
+pip install -r requirements.txt
+
+cd docker-compose
+cp .env.example .env
+nano .env
+
+docker compose -f docker-compose.monitoring.yml up -d --build
+docker compose -f docker-compose.monitoring.yml ps
+docker logs monitoring_tool --tail 50
+```
+
+Then open:
+
+```text
+http://<YOUR_SERVER_IP>:8080
+```
+
+### Full Ubuntu path: install Docker first
+
+If Docker is not installed yet and you want to use Docker's official apt repository on Ubuntu:
+
+```bash
+sudo apt update
+sudo apt install -y ca-certificates curl gnupg git python3 python3-pip python3-venv
+
+sudo install -m 0755 -d /etc/apt/keyrings
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+sudo chmod a+r /etc/apt/keyrings/docker.gpg
+
+echo \
+	"deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
+	$(. /etc/os-release && echo $VERSION_CODENAME) stable" | \
+	sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+
+sudo apt update
+sudo apt install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+
+docker --version
+docker compose version
+
+cd /opt
+sudo git clone https://github.com/willian2501/monitoring_tool_for_ubuntu.git linux-host-monitor
+cd /opt/linux-host-monitor
+
+python3 -m venv .venv
+. .venv/bin/activate
+pip install -r requirements.txt
+
+cd docker-compose
+cp .env.example .env
+nano .env
+
+docker compose -f docker-compose.monitoring.yml up -d --build
+docker compose -f docker-compose.monitoring.yml ps
+docker logs monitoring_tool --tail 50
+```
+
+Then open:
+
+```text
+http://<YOUR_SERVER_IP>:8080
+```
+
 ### 1. Install host prerequisites
 
 On Ubuntu, install the base packages first:
