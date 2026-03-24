@@ -4,26 +4,10 @@
 ![Docker](https://img.shields.io/badge/runtime-Docker-0ea5e9?style=for-the-badge&logo=docker&logoColor=white)
 ![Node.js](https://img.shields.io/badge/backend-Node.js-15803d?style=for-the-badge&logo=nodedotjs&logoColor=white)
 ![Zero deps](https://img.shields.io/badge/runtime_deps-zero-7c3aed?style=for-the-badge)
+![CI](https://img.shields.io/github/actions/workflow/status/willian2501/monitoring_tool_for_ubuntu/ci.yml?branch=main&style=for-the-badge&label=CI)
+![License](https://img.shields.io/github/license/willian2501/monitoring_tool_for_ubuntu?style=for-the-badge)
 
 Lightweight self-hosted monitoring for Ubuntu and other Linux Docker hosts, focused on host health, container visibility, storage diagnostics, and optional log analytics.
-
-## Install
-
-```bash
-sudo apt update
-sudo apt install -y git ca-certificates curl
-cd /opt
-sudo git clone https://github.com/willian2501/monitoring_tool_for_ubuntu.git linux-host-monitor
-cd /opt/linux-host-monitor
-
-# Optional: kept for platforms that expect a requirements step.
-# This file is currently empty, so this command installs nothing.
-python3 -m pip install -r requirements.txt
-
-cd docker-compose
-cp .env.example .env
-docker compose -f docker-compose.monitoring.yml up -d --build
-```
 
 ## Screenshot
 
@@ -117,18 +101,16 @@ There is no required `npm install` step for normal usage.
 
 The application runtime is built inside the Docker image. The `requirements.txt` file is currently empty and exists mainly for tooling or platforms that expect a dependency-install step.
 
-## Quick Start
+## Install and Quick Start
 
 ### 1. Install host prerequisites
 
-On Ubuntu, install the basic tools first if they are not already available:
+On Ubuntu, install the base packages first:
 
 ```bash
 sudo apt update
-sudo apt install -y git ca-certificates curl
+sudo apt install -y git ca-certificates curl python3 python3-pip docker.io docker-compose-v2
 ```
-
-Install Docker Engine and the Docker Compose plugin if needed.
 
 After installation, confirm these commands work:
 
@@ -136,6 +118,8 @@ After installation, confirm these commands work:
 docker --version
 docker compose version
 git --version
+python3 --version
+python3 -m pip --version
 ```
 
 ### 2. Clone the repository on the Linux host
@@ -148,7 +132,18 @@ cd linux-host-monitor
 
 If you prefer a different folder, that is fine. The docs use `/opt/linux-host-monitor` as the example path.
 
-### 3. Review what does and does not need to be installed
+### 3. Install the documented requirements step
+
+If your checklist expects a requirements command, run it after cloning:
+
+```bash
+cd /opt/linux-host-monitor
+python3 -m pip install -r requirements.txt
+```
+
+Right now this installs nothing because the file is intentionally empty.
+
+### 4. Review what does and does not need to be installed
 
 - you do not need to run `npm install`
 - you do not need Node.js or Python installed on the host just to run the container
@@ -156,14 +151,14 @@ If you prefer a different folder, that is fine. The docs use `/opt/linux-host-mo
 
 The Docker build handles the application runtime for you.
 
-### 4. Create the environment file
+### 5. Create the environment file
 
 ```bash
 cd /opt/linux-host-monitor/docker-compose
 cp .env.example .env
 ```
 
-### 5. Edit the host-specific values
+### 6. Edit the host-specific values
 
 ```bash
 nano /opt/linux-host-monitor/docker-compose/.env
@@ -179,21 +174,21 @@ At minimum, review:
 
 If you do not use Caddy, you can still run the tool. Access-log panels will simply stay empty unless `HOST_CADDY_LOG_DIR` points to JSON logs.
 
-### 6. Start the container
+### 7. Start the container
 
 ```bash
 cd /opt/linux-host-monitor/docker-compose
 docker compose -f docker-compose.monitoring.yml up -d --build
 ```
 
-### 7. Confirm the container is running
+### 8. Confirm the container is running
 
 ```bash
 docker compose -f /opt/linux-host-monitor/docker-compose/docker-compose.monitoring.yml ps
 docker logs monitoring_tool --tail 50
 ```
 
-### 8. Open the dashboard
+### 9. Open the dashboard
 
 Open `http://<host>:8080` or the port defined by `MONITORING_PORT`.
 
@@ -221,6 +216,74 @@ Default runtime tuning:
 - `COLLECTION_INTERVAL_MS=180000`
 - `HOST_COLLECTION_INTERVAL_MS=30000`
 
+Key configuration notes:
+
+- `HOST_CADDY_LOG_DIR` should point to a directory that contains JSON access logs if you want request analytics
+- `HOST_CONTAINER_LOG_ROOT` defaults to the standard Docker Engine container log path
+- `CONFIG_ROOT_PATH` is the path inside the container used by the config explorer; because the host root is mounted at `/host-root`, a host path like `/opt/my-stack` becomes `/host-root/opt/my-stack`
+- `SELECTED_LOG_CONTAINERS` is optional and controls which containers appear in important-log and live-tail panels
+- `SERVICE_PROBES` is optional and can be used for synthetic endpoint checks
+
+## Deployment Notes
+
+This repository ships a standalone Compose file for the monitoring container only.
+
+It does not replace your existing application stack.
+
+After starting the container, verify it is healthy:
+
+```bash
+docker compose -f /opt/linux-host-monitor/docker-compose/docker-compose.monitoring.yml ps
+docker logs monitoring_tool --tail 50
+```
+
+## Reverse Proxy
+
+The bundled Caddy file is a minimal example site block, not a full server-wide Caddyfile.
+
+Use `caddy/Caddyfile.monitoring-phase1.snippet` as a starting point and set:
+
+- `MONITORING_DOMAIN`
+- `CADDY_ACME_EMAIL`
+
+The example proxies traffic to `monitoring_tool:8080` and writes JSON access logs to `/var/log/caddy/monitoring-access.log`.
+
+If your reverse proxy runs outside the same Docker network, change the upstream target to the host and published port instead.
+
+## Access Control
+
+This published package no longer includes Firebase login or OTP.
+
+If the dashboard is reachable from the public internet, place it behind external authentication such as:
+
+- Cloudflare Access
+- reverse-proxy authentication
+- a VPN
+
+Reference notes are in `cloudflare/access-setup.md`.
+
+## Validation
+
+After deployment, confirm:
+
+1. the dashboard loads without a built-in login screen
+2. host cards show CPU, RAM, disk, and network
+3. container rows appear
+4. request charts populate if your access-log directory contains JSON logs
+5. important logs and live tails appear for containers listed in `SELECTED_LOG_CONTAINERS`
+
+If request charts stay empty, verify that `HOST_CADDY_LOG_DIR` points to a real directory with JSON log files.
+
+## Retention
+
+The tool keeps data intentionally short:
+
+- 7 days of snapshots
+- 7 days of access rollups
+- 7 days of stored important log events
+
+Live tail panels are read on demand from current Docker log files.
+
 ## Security
 
 This dashboard mounts privileged host resources.
@@ -242,12 +305,10 @@ The project intentionally does not ship its own login screen.
 - `docker-compose/` standalone Compose example and env template
 - `caddy/` optional reverse-proxy example
 - `cloudflare/` optional access-control guidance
-- `Setup_custom_tool.md` deployment notes
 - `requirements.txt` optional empty dependency manifest for tooling compatibility
 
 ## Documentation
 
-- `Setup_custom_tool.md` for installation and deployment
 - `CONTRIBUTING.md` for contribution rules
 - `SECURITY.md` for security guidance
 

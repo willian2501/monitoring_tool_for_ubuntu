@@ -5,6 +5,7 @@
   "description": "Single-container monitoring dashboard for Linux hosts and Docker services.",
   "main": "src/server.js",
   "scripts": {
-    "start": "node src/server.js"
+    "start": "node src/server.js",
+    "check": "node --check src/db.js && node --check src/collector.js && node --check src/server.js"
   }
 }
