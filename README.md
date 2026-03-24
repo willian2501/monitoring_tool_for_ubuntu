@@ -13,6 +13,8 @@ Lightweight self-hosted monitoring for Ubuntu and other Linux Docker hosts, focu
 
 ![Dashboard preview](docs/assets/dashboard-preview.svg)
 
+Example dashboard layout showing host summary cards, time-range controls, CPU and memory charts, traffic charts, and request summary cards.
+
 ## Overview
 
 Linux Host Monitor for Ubuntu is a lightweight monitoring dashboard for Linux machines that run Docker.
@@ -273,6 +275,141 @@ After deployment, confirm:
 5. important logs and live tails appear for containers listed in `SELECTED_LOG_CONTAINERS`
 
 If request charts stay empty, verify that `HOST_CADDY_LOG_DIR` points to a real directory with JSON log files.
+
+## Troubleshooting
+
+### `python3 -m pip install -r requirements.txt` fails with `No module named pip`
+
+Install `pip` first:
+
+```bash
+sudo apt update
+sudo apt install -y python3-pip
+python3 -m pip --version
+```
+
+Then rerun:
+
+```bash
+cd /opt/linux-host-monitor
+python3 -m pip install -r requirements.txt
+```
+
+### `docker compose` is not found
+
+Install Docker and the Compose plugin:
+
+```bash
+sudo apt update
+sudo apt install -y docker.io docker-compose-v2
+docker --version
+docker compose version
+```
+
+### `docker compose up` fails because Docker is not running
+
+Start and enable the Docker service:
+
+```bash
+sudo systemctl enable --now docker
+sudo systemctl status docker
+```
+
+### Permission errors when accessing Docker
+
+If you are not running as root, add your user to the `docker` group and start a new shell session:
+
+```bash
+sudo usermod -aG docker "$USER"
+newgrp docker
+docker ps
+```
+
+### The dashboard opens but container data is empty
+
+Check that the Docker socket is mounted and readable inside the container:
+
+```bash
+docker inspect monitoring_tool --format '{{json .Mounts}}'
+docker logs monitoring_tool --tail 100
+```
+
+Make sure `/var/run/docker.sock` exists on the host.
+
+### Host metrics look empty or broken
+
+Confirm these host mounts are present in the running container:
+
+- `/proc` mounted to `/host/proc`
+- `/sys` mounted to `/host/sys`
+- `/` mounted to `/host-root`
+
+You can inspect mounts with:
+
+```bash
+docker inspect monitoring_tool --format '{{json .Mounts}}'
+```
+
+### Request charts stay empty
+
+This usually means `HOST_CADDY_LOG_DIR` does not point to JSON access logs.
+
+Check the value in `docker-compose/.env`, then confirm files exist on the host:
+
+```bash
+ls -lah /var/log/caddy
+docker logs monitoring_tool --tail 100
+```
+
+If you do not use Caddy or do not mount JSON logs, the dashboard still works, but request analytics remain empty.
+
+### Important logs and live tails are empty
+
+Check `SELECTED_LOG_CONTAINERS` in `docker-compose/.env`.
+
+Only containers listed there are used for important-log and live-tail panels.
+
+Also confirm the host log root exists:
+
+```bash
+ls -lah /var/lib/docker/containers
+```
+
+### The config explorer shows nothing
+
+Check `CONFIG_ROOT_PATH` in `docker-compose/.env`.
+
+Because the host root is mounted to `/host-root`, a host directory like `/opt/my-stack` must be configured as:
+
+```text
+CONFIG_ROOT_PATH=/host-root/opt/my-stack
+```
+
+### The container starts and exits immediately
+
+Inspect the logs first:
+
+```bash
+docker logs monitoring_tool --tail 200
+```
+
+Then rebuild from scratch if needed:
+
+```bash
+cd /opt/linux-host-monitor/docker-compose
+docker compose -f docker-compose.monitoring.yml down
+docker compose -f docker-compose.monitoring.yml up -d --build
+```
+
+### Port `8080` is already in use
+
+Change `MONITORING_PORT` in `docker-compose/.env` to another host port, for example:
+
+```text
+MONITORING_PORT=8090
+```
+
+Then recreate the container.
 
 ## Retention
 
