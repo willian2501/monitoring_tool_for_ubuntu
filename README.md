@@ -138,6 +138,57 @@ Then open:
 http://<YOUR_SERVER_IP>:8080
 ```
 
+### What must be in `.env`
+
+The file lives at:
+
+```text
+/opt/linux-host-monitor/docker-compose/.env
+```
+
+Minimum working `.env` for most Docker hosts:
+
+```text
+MONITORING_PORT=8080
+HOST_CADDY_LOG_DIR=/var/log/caddy
+HOST_CONTAINER_LOG_ROOT=/var/lib/docker/containers
+CONFIG_ROOT_PATH=/host-root
+DATA_RETENTION_DAYS=7
+COLLECTION_INTERVAL_MS=180000
+HOST_COLLECTION_INTERVAL_MS=30000
+SELECTED_LOG_CONTAINERS=
+SERVICE_PROBES=
+MONITORING_DOMAIN=monitoring.example.com
+CADDY_ACME_EMAIL=admin@example.com
+```
+
+What is actually required:
+
+- `MONITORING_PORT`: host port where the dashboard will be exposed
+- `HOST_CONTAINER_LOG_ROOT`: path to Docker container logs on the host
+- `CONFIG_ROOT_PATH`: path inside the container used by the config explorer
+
+What is usually fine to leave as default:
+
+- `DATA_RETENTION_DAYS=7`
+- `COLLECTION_INTERVAL_MS=180000`
+- `HOST_COLLECTION_INTERVAL_MS=30000`
+
+What is optional:
+
+- `HOST_CADDY_LOG_DIR`: only needed if you want request analytics from JSON access logs
+- `SELECTED_LOG_CONTAINERS`: only needed if you want important-log and live-tail panels for specific containers
+- `SERVICE_PROBES`: only needed if you want synthetic endpoint probes
+- `MONITORING_DOMAIN` and `CADDY_ACME_EMAIL`: only needed if you use the bundled Caddy example
+
+Practical examples:
+
+- no Caddy, local/private access only: keep `HOST_CADDY_LOG_DIR` as-is or point it to an empty directory; request charts will stay empty
+- with Caddy JSON logs: set `HOST_CADDY_LOG_DIR` to the real host folder where Caddy writes JSON logs
+- with config explorer for another stack folder: if your host stack lives in `/opt/my-stack`, set `CONFIG_ROOT_PATH=/host-root/opt/my-stack`
+
+If you are unsure, start with the minimum example above, leave the optional values empty, and get the dashboard running first.
+
 ### Full Ubuntu path: install Docker first
 
 If Docker is not installed yet and you want to use Docker's official apt repository on Ubuntu:
@@ -317,6 +368,13 @@ Important variables:
 - `HOST_COLLECTION_INTERVAL_MS`
 - `SELECTED_LOG_CONTAINERS`
 - `SERVICE_PROBES`
+
+The quickest safe approach is:
+
+1. copy `.env.example` to `.env`
+2. change `MONITORING_PORT` only if `8080` is already in use
+3. verify `HOST_CONTAINER_LOG_ROOT=/var/lib/docker/containers` exists on the host
+4. leave the rest unchanged for the first run unless you specifically need Caddy logs, probes, or a different config root
 
 Default runtime tuning:
 
