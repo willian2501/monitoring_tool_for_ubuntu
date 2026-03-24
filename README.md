@@ -111,7 +111,22 @@ On Ubuntu, install the base packages first:
 
 ```bash
 sudo apt update
-sudo apt install -y git ca-certificates curl python3 python3-pip docker.io docker-compose-v2
+sudo apt install -y git ca-certificates curl python3 python3-pip
+```
+
+For Docker, use one of these approaches:
+
+- if Docker is already installed and `docker compose version` works, keep your current installation
+- if you use Ubuntu's packages, install `docker.io` and a compatible Compose package from Ubuntu
+- if you use Docker's official apt repository, install Docker packages from that repository only
+
+Do not mix Ubuntu's `docker.io` package with Docker upstream packages like `containerd.io`.
+
+If you are using Docker's official repository, install Docker like this:
+
+```bash
+sudo apt update
+sudo apt install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
 ```
 
 After installation, confirm these commands work:
@@ -297,14 +312,33 @@ python3 -m pip install -r requirements.txt
 
 ### `docker compose` is not found
 
-Install Docker and the Compose plugin:
+Install Docker and the Compose plugin using one package source only.
+
+If you are using Docker's official repository:
 
 ```bash
 sudo apt update
-sudo apt install -y docker.io docker-compose-v2
+sudo apt install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
 docker --version
 docker compose version
 ```
+
+If you are using Ubuntu's repository instead, install Docker packages from Ubuntu only and avoid Docker upstream packages.
+
+### `containerd.io` conflicts with `containerd`
+
+This happens when Ubuntu's `docker.io` package is mixed with Docker's official packages.
+
+Use one source or the other, not both.
+
+If Docker's official repository is already configured on the machine, prefer:
+
+```bash
+sudo apt update
+sudo apt install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+```
+
+Do not install `docker.io` in that case.
 
 ### `docker compose up` fails because Docker is not running
 
