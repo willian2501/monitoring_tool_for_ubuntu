@@ -23,20 +23,44 @@ This published setup uses:
 
 ## Do this in order
 
-1. Copy `custom-tool/` to any directory on the Linux host, for example `/opt/linux-host-monitor/`
-2. Copy `docker-compose/.env.example` to `docker-compose/.env`
-3. Adjust the host paths and optional settings in `docker-compose/.env`
-4. Start the monitoring container with Docker Compose
-5. Optionally add the provided Caddy site block to your existing reverse proxy
-6. Optionally place the hostname behind Cloudflare Access or another access-control layer
+1. Install host prerequisites such as Git, Docker Engine, and the Docker Compose plugin
+2. Clone the repository onto the Linux host
+3. Copy `docker-compose/.env.example` to `docker-compose/.env`
+4. Adjust the host paths and optional settings in `docker-compose/.env`
+5. Start the monitoring container with Docker Compose
+6. Optionally add the provided Caddy site block to your existing reverse proxy
+7. Optionally place the hostname behind Cloudflare Access or another access-control layer
 
-## 1. Copy files to the host
+## 1. Install prerequisites on the host
+
+On Ubuntu, install Git first if needed:
 
 ```bash
-scp -r custom-tool/. user@<LINUX_HOST>:/opt/linux-host-monitor/
+sudo apt update
+sudo apt install -y git ca-certificates curl
 ```
 
-## 2. Prepare `.env`
+Then make sure Docker and Docker Compose are available:
+
+```bash
+docker --version
+docker compose version
+git --version
+```
+
+This project does not require a separate host-side `npm install` or `pip install`. The runtime is built inside Docker.
+
+## 2. Clone the repository to the host
+
+```bash
+cd /opt
+sudo git clone https://github.com/willian2501/monitoring_tool_for_ubuntu.git linux-host-monitor
+cd /opt/linux-host-monitor
+```
+
+If you want a different folder, that is fine. Just update the example paths accordingly.
+
+## 3. Prepare `.env`
 
 ```bash
 cd /opt/linux-host-monitor/docker-compose
@@ -67,6 +91,7 @@ Key settings:
 - `CONFIG_ROOT_PATH`: path inside the container for config explorer; because the host root is mounted at `/host-root`, a host path like `/opt/my-stack` becomes `/host-root/opt/my-stack`
 - `SELECTED_LOG_CONTAINERS`: optional comma-separated container names for important-log and live-tail panels
 - `SERVICE_PROBES`: optional probe definitions if you want synthetic checks in addition to host metrics
+- `requirements.txt`: included only as documentation that there are no Python package dependencies for this repository
 
 Default monitoring tune-up now used by this tool:
 
@@ -82,7 +107,7 @@ Recent behavior worth knowing before you deploy:
 - the Containers tab uses snapshot freshness separately from fast host polling, so container data is not marked fresher than it really is
 - the Logs tab now includes storage diagnostics and a Top Processes panel with friendly service labels
 
-## 3. Start the container
+## 4. Start the container
 
 ```bash
 cd /opt/linux-host-monitor/docker-compose
@@ -93,7 +118,14 @@ This starts only the monitoring container. It does not replace your existing app
 
 The container publishes `MONITORING_PORT` on the host. If you only want private access, bind that port to a private interface at your reverse proxy or firewall layer.
 
-## 4. Optional Caddy reverse proxy
+After starting, verify that it is healthy:
+
+```bash
+docker compose -f /opt/linux-host-monitor/docker-compose/docker-compose.monitoring.yml ps
+docker logs monitoring_tool --tail 50
+```
+
+## 5. Optional Caddy reverse proxy
 
 The bundled Caddy file is now a minimal example site block, not a full server-wide Caddyfile.
 
@@ -106,13 +138,13 @@ The example proxies traffic to `monitoring_tool:8080` and writes JSON access log
 
 If your Caddy instance runs outside the same Docker network, change the upstream target to the host and published port instead.
 
-## 5. Optional access control
+## 6. Optional access control
 
 This published package no longer includes Firebase login or OTP.
 
 If the dashboard is reachable from the public internet, put it behind external auth. Reference notes: `cloudflare/access-setup.md`
 
-## 6. Validate
+## 7. Validate
 
 1. Open `http://<HOST_OR_DOMAIN>:<MONITORING_PORT>` or your reverse-proxied hostname
 2. Confirm the dashboard loads without a built-in login screen
