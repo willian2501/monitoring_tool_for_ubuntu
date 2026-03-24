@@ -1,49 +1,147 @@
-# Custom Tool
+# Linux Host Monitor for Ubuntu
 
-This folder contains a single-container monitoring dashboard for Linux hosts that run Docker.
+## Overview
 
-The container includes:
+Linux Host Monitor for Ubuntu is a lightweight monitoring dashboard for Linux machines that run Docker.
 
-- nginx for serving the frontend page
+It ships as a single container with:
+
+- nginx serving the frontend on port 8080
 - a Node.js API for collection and aggregation
 - a local JSON-backed store for lightweight history
 
-Data sources:
+The project is designed to stay simple:
 
-- Docker socket for container stats and inspect data
-- `/proc` and `/sys` for host metrics
-- Caddy access logs for HTTP request insights
-- selected Docker container log files for live tails and important events
-
-What is bundled here:
-
-- a standalone Docker Compose example for the monitoring container only
-- a minimal Caddy site example for reverse proxying the dashboard
+- no external database
+- no npm runtime dependencies
 - no built-in Firebase or OTP authentication layer
+- no production-specific domains or host paths in the published package
 
-Current dashboard behavior:
+## What It Monitors
 
-- the Containers tab shows running containers only, aligned with `docker ps`
-- the Containers view includes a snapshot freshness badge and `Last Seen` column so stale data is visible
-- the home dashboard shows `5xx Errors` for the last hour instead of a derived successful-request count
-- the home Network Traffic tile follows the selected time range using lightweight host-series data instead of a single latest snapshot
-- the Logs tab includes root-folder usage, largest files, storage growth trends, and a Top Processes panel with friendly service labels
-- dashboard polling is split: lightweight host metrics refresh every 30 seconds while full container/log snapshots stay on the slower full collection interval
+### Host metrics
 
-Runtime defaults are kept intentionally conservative:
+- CPU usage
+- memory usage
+- disk usage
+- network RX and TX
+- uptime and load average
+
+### Docker metrics
+
+- running containers
+- container CPU and memory
+- restart count
+- health state
+- image names
+- last-seen freshness information
+
+### Optional log-based insights
+
+- request trends from JSON access logs
+- top URLs and top client IPs
+- HTTP error breakdowns
+- important container log entries
+- live tails for selected containers
+
+### Storage and process visibility
+
+- largest root folders
+- largest files
+- storage growth trends
+- top host processes
+
+## Features
+
+- range-aware dashboard views
+- lightweight host polling every 30 seconds
+- slower full snapshot collection every 3 minutes
+- historical snapshot compaction to reduce memory usage
+- config explorer for mounted `docker-compose.yml`, `compose.yml`, and `Caddyfile`
+- standalone Docker Compose example for the monitoring container only
+- minimal Caddy reverse-proxy example
+
+## Requirements
+
+- Ubuntu or another Linux distribution
+- Docker Engine
+- access to `/var/run/docker.sock`
+- readable host mounts for `/proc`, `/sys`, and `/`
+
+Optional:
+
+- a directory with JSON access logs
+- access to `/var/lib/docker/containers` for important log entries and live tails
+- a reverse proxy such as Caddy
+
+## Quick Start
+
+1. Copy this repository to your Linux host.
+2. Open `docker-compose/.env.example` and create `docker-compose/.env`.
+3. Adjust the paths and host-specific values.
+4. Start the container:
+
+```bash
+cd docker-compose
+docker compose -f docker-compose.monitoring.yml up -d --build
+```
+
+5. Open `http://<host>:8080` or the port defined by `MONITORING_PORT`.
+
+## Configuration
+
+The main environment template is in `docker-compose/.env.example`.
+
+Important variables:
+
+- `MONITORING_PORT`
+- `HOST_CADDY_LOG_DIR`
+- `HOST_CONTAINER_LOG_ROOT`
+- `CONFIG_ROOT_PATH`
+- `DATA_RETENTION_DAYS`
+- `COLLECTION_INTERVAL_MS`
+- `HOST_COLLECTION_INTERVAL_MS`
+- `SELECTED_LOG_CONTAINERS`
+- `SERVICE_PROBES`
+
+Default runtime tuning:
 
 - `DATA_RETENTION_DAYS=7`
-- `COLLECTION_INTERVAL_MS=180000` (3 minutes)
-- `HOST_COLLECTION_INTERVAL_MS=30000` (30 seconds for lightweight host metrics)
-- historical snapshots are compacted in storage so only the latest snapshot stays fully expanded in memory
+- `COLLECTION_INTERVAL_MS=180000`
+- `HOST_COLLECTION_INTERVAL_MS=30000`
 
-Operational note:
+## Security
 
-- host cards can update between full snapshots, but container/log freshness still follows the full snapshot cycle so the UI does not overstate how current that heavier data is
+This dashboard mounts privileged host resources.
 
-Publishing note:
+If you expose it outside a private network, place it behind external authentication such as:
 
-- this package is now generic, but it assumes a Linux Docker host and read access to Docker, `/proc`, `/sys`, and optionally your reverse-proxy log directory
-- if you expose it publicly, put it behind external authentication such as Cloudflare Access, VPN, or reverse-proxy auth
+- Cloudflare Access
+- reverse-proxy authentication
+- a VPN
 
-The main setup instructions live in `Setup_custom_tool.md`.
+The project intentionally does not ship its own login screen.
+
+## Repository Layout
+
+- `src/` application backend
+- `public/` frontend assets
+- `nginx/` nginx config
+- `docker/` container entrypoint
+- `docker-compose/` standalone Compose example and env template
+- `caddy/` optional reverse-proxy example
+- `cloudflare/` optional access-control guidance
+- `Setup_custom_tool.md` deployment notes
+- `KNOWN_ME.md` operator-focused quick notes
+
+## Documentation
+
+- `Setup_custom_tool.md` for installation and deployment
+- `CONTRIBUTING.md` for contribution rules
+- `SECURITY.md` for security guidance
+
+## Notes
+
+- host cards can update between full snapshots, but container and log freshness still follows the full snapshot cycle
+- the package is generic for Linux Docker hosts, not for non-Docker environments
+- access-log analytics work only when the mounted log directory actually contains JSON logs
