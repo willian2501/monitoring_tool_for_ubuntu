@@ -162,6 +162,16 @@ pip install -r requirements.txt
 
 Right now this installs nothing because the file is intentionally empty.
 
+Do not run `pip install -r requirements.txt` directly against the system Python on Ubuntu 24.04+.
+
+If you do not want to activate the virtual environment, use the venv pip explicitly:
+
+```bash
+cd /opt/linux-host-monitor
+python3 -m venv .venv
+.venv/bin/pip install -r requirements.txt
+```
+
 ### 4. Review what does and does not need to be installed
 
 - you do not need to run `npm install`
@@ -320,6 +330,8 @@ This is expected on newer Ubuntu releases that enforce PEP 668 for the system Py
 
 Do not use `--break-system-packages` for this repository.
 
+Do not run bare `pip install -r requirements.txt` either, because that still targets the system-managed Python environment unless you are inside an activated virtual environment.
+
 Use a virtual environment instead:
 
 ```bash
@@ -332,6 +344,14 @@ pip install -r requirements.txt
 ```
 
 For this repository, that command still installs nothing because `requirements.txt` is intentionally empty.
+
+If you prefer not to activate the environment, this is also valid:
+
+```bash
+cd /opt/linux-host-monitor
+python3 -m venv .venv
+.venv/bin/pip install -r requirements.txt
+```
 
 ### `docker compose` is not found
 
