@@ -1,0 +1,712 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Linux Host Monitor</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/styles.css" />
+  <script defer src="https://cdn.jsdelivr.net/npm/chart.js@4.4.8/dist/chart.umd.min.js"></script>
+  <script defer src="/app.js"></script>
+</head>
+<body>
+  <div class="backdrop"></div>
+  <div id="monitoringContent">
+  <header class="hero">
+    <div>
+      <p class="eyebrow">Infrastructure Monitoring</p>
+      <h1>Monitoring Dashboard</h1>
+    </div>
+    <div class="hero-meta">
+      <div class="hero-chip">
+        <span class="dot live"></span>
+        <span id="generationLabel">Waiting for data</span>
+      </div>
+      <div class="hero-chip" id="refreshChip">
+        <span id="refreshIntervalLabel">Auto-refresh: 60s</span>
+      </div>
+      <button id="autoRefreshToggle" class="hero-chip hero-chip-button" type="button" aria-pressed="true">Pause Auto-refresh</button>
+      <details class="hero-dropdown" id="whitelistDropdown">
+        <summary class="hero-chip hero-dropdown-summary">
+          <span>Whitelist</span>
+          <span id="whitelistStatus" class="whitelist-status">0 IPs saved</span>
+        </summary>
+        <div class="hero-dropdown-panel">
+          <p class="hero-dropdown-label">Trusted IPs excluded from dashboard and logs</p>
+          <div class="hero-dropdown-actions">
+            <input type="text" id="whitelistIps" class="filter-input" placeholder="Add trusted IPs separated by comma" />
+            <button id="saveWhitelistBtn" class="filter-button" type="button">Save</button>
+          </div>
+        </div>
+      </details>
+      <button id="refreshButton" class="primary-button" type="button">Refresh Now</button>
+      <div class="alert-bell-wrap" style="position:relative;">
+        <button id="alertBellBtn" class="alert-bell" type="button" title="Alerts &amp; Health">
+          <span class="alert-bell-icon">&#128276;</span>
+          <span id="alertBellLabel">Alerts</span>
+        </button>
+        <div id="alertPanel" class="alert-panel">
+          <div class="alert-panel-header">
+            <h3>System Alerts</h3>
+            <div class="alert-panel-actions">
+              <button id="alertRestoreBtn" class="alert-restore-btn" style="display:none;" title="Show cleared alerts again">Restore cleared</button>
+              <button id="alertClearAllBtn" class="alert-clear-btn" style="display:none;" title="Clear all current alerts until they resolve">Clear all</button>
+              <button id="alertAcknowledgeAllBtn" class="alert-clear-btn" style="display:none;" title="Acknowledge all visible alerts">Acknowledge all</button>
+              <button id="alertMarkAllReadBtn" class="alert-clear-btn" style="display:none;" title="Mark all current alerts as read">Mark all read</button>
+              <span id="alertPanelCount"></span>
+            </div>
+          </div>
+          <div id="alertList" class="alert-list">
+            <div class="alert-empty">All systems healthy — no alerts.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main class="page-shell">
+    <!-- Tab navigation + Range selector -->
+    <div class="range-bar">
+      <nav class="tab-bar">
+        <button class="tab-button active" data-tab="dashboard">Dashboard</button>
+        <button class="tab-button" data-tab="containers">Containers</button>
+        <button class="tab-button" data-tab="logs">Logs</button>
+      </nav>
+      <div class="range-right">
+        <span class="range-label">Time Range</span>
+        <div class="range-pills">
+          <button class="range-pill" data-range="5m">5m</button>
+          <button class="range-pill" data-range="1h">1h</button>
+          <button class="range-pill active" data-range="6h">6h</button>
+          <button class="range-pill" data-range="24h">24h</button>
+          <button class="range-pill" data-range="3d">3d</button>
+          <button class="range-pill" data-range="7d">7d</button>
+          <button class="range-pill" data-range="14d">14d</button>
+          <button class="range-pill" data-range="custom">Custom</button>
+        </div>
+        <div id="customRangeWrap" class="custom-range-wrap" style="display:none">
+          <input type="datetime-local" id="customFrom" class="custom-date-input" />
+          <span class="range-label">to</span>
+          <input type="datetime-local" id="customTo" class="custom-date-input" />
+        </div>
+        <button id="rangeApplyBtn" class="filter-button range-apply-btn" type="button">Apply</button>
+      </div>
+    </div>
+
+    <!-- Dashboard tab -->
+    <div id="tab-dashboard" class="tab-content active">
+
+    <!-- Linux VM metrics (8 cards) -->
+    <section class="panel">
+      <div class="panel-heading">
+        <div>
+          <p class="panel-kicker">Linux VM</p>
+          <h2>Host Utilization</h2>
+        </div>
+      </div>
+      <div id="hostMetrics" class="host-metrics"></div>
+    </section>
+
+    <!-- Charts row -->
+    <section class="panel-grid charts-grid">
+      <article class="panel chart-panel">
+        <div class="panel-heading">
+          <div>
+            <p class="panel-kicker">Host</p>
+            <h2>CPU and Memory</h2>
+          </div>
+        </div>
+        <div class="chart-wrap"><canvas id="hostChart"></canvas></div>
+      </article>
+
+      <article class="panel chart-panel">
+        <div class="panel-heading">
+          <div>
+            <p class="panel-kicker">Traffic</p>
+            <h2>Requests and Status Codes</h2>
+          </div>
+        </div>
+        <div class="chart-wrap"><canvas id="accessChart"></canvas></div>
+      </article>
+    </section>
+
+    <!-- Requests + Devices + Browsers summary -->
+    <section class="stats-grid stats-grid-thirds" id="summaryCards"></section>
+
+    <!-- Top Client IPs + Top URLs -->
+    <section class="panel-grid secondary-grid">
+      <article class="panel">
+        <div class="panel-heading">
+          <div>
+            <p class="panel-kicker">Clients</p>
+            <h2 id="clientIpsHeading">Top Client IPs</h2>
+          </div>
+        </div>
+        <div id="topClientIps" class="top-paths"></div>
+      </article>
+
+      <article class="panel">
+        <div class="panel-heading">
+          <div>
+            <p class="panel-kicker">Traffic</p>
+            <h2 id="topUrlsHeading">Top URLs</h2>
+          </div>
+        </div>
+        <div id="topUrls" class="top-paths"></div>
+      </article>
+    </section>
+
+    <!-- Geo Map -->
+    <section class="panel">
+      <div class="panel-heading">
+        <div>
+          <p class="panel-kicker">Geographic Distribution</p>
+          <h2>Public IP Request Origins to East US</h2>
+        </div>
+      </div>
+      <div class="geo-section">
+        <div class="geo-map-wrap">
+          <div id="geoMap" class="geo-map"></div>
+        </div>
+        <div class="geo-countries" id="geoCountries">
+          <div class="empty-state">No public IP geo data yet.</div>
+        </div>
+      </div>
+    </section>
+    </div><!-- end tab-dashboard -->
+
+    <!-- Logs tab -->
+    <div id="tab-logs" class="tab-content">
+
+    <!-- Logs Overview Tiles -->
+    <section class="stats-grid logs-overview" id="logsOverview"></section>
+
+    <!-- HTTP Access Log (filterable) -->
+    <section class="panel" id="accessLogPanel">
+      <div class="panel-heading">
+        <div>
+          <p class="panel-kicker">Access Log</p>
+          <h2>HTTP Request Log</h2>
+        </div>
+      </div>
+      <div class="filter-bar">
+        <input type="text" id="accessSearch" class="filter-input" placeholder="Search URL, IP, User-Agent..." />
+        <select id="accessStatusFilter" class="filter-select">
+          <option value="">All Status</option>
+          <option value="2xx">2xx Success</option>
+          <option value="3xx">3xx Redirect</option>
+          <option value="4xx">4xx Client Error</option>
+          <option value="5xx">5xx Server Error</option>
+          <option value="errors">All Errors (4xx+5xx)</option>
+        </select>
+        <select id="accessMethodFilter" class="filter-select">
+          <option value="">All Methods</option>
+          <option value="GET">GET</option>
+          <option value="POST">POST</option>
+          <option value="PUT">PUT</option>
+          <option value="DELETE">DELETE</option>
+          <option value="HEAD">HEAD</option>
+          <option value="OPTIONS">OPTIONS</option>
+        </select>
+        <button id="accessBotsOnly" class="filter-button filter-button-secondary filter-toggle-button" type="button" aria-pressed="false">Only show bots</button>
+        <button id="accessErrorsOnly" class="filter-button filter-button-secondary filter-toggle-button" type="button" aria-pressed="false">Only show errors</button>
+        <input type="text" id="accessExcludeIp" class="filter-input filter-input-short" placeholder="Exclude IPs (comma-separated)" />
+        <button id="accessFilterBtn" class="filter-button" type="button">Apply</button>
+        <button id="accessClearBtn" class="filter-button filter-button-secondary" type="button">Clear</button>
+      </div>
+      <div class="table-scroll">
+        <table class="data-table access-log-table">
+          <thead>
+            <tr>
+              <th>Time</th>
+              <th>Status</th>
+              <th>Method</th>
+              <th>URL</th>
+              <th>Client IP</th>
+              <th>Duration</th>
+              <th>Size</th>
+              <th>User-Agent</th>
+            </tr>
+          </thead>
+          <tbody id="accessLogRows"></tbody>
+        </table>
+      </div>
+      <div class="table-footer">
+        <div class="table-footer-left">
+          <span id="accessLogCount">0 entries</span>
+          <label class="per-page-label">Show
+            <select id="accessPerPage" class="per-page-select">
+              <option value="50" selected>50</option>
+              <option value="100">100</option>
+              <option value="200">200</option>
+            </select>
+          per page</label>
+        </div>
+        <div id="accessPagination" class="pagination"></div>
+      </div>
+    </section>
+
+    <!-- Bot Detection -->
+    <section class="panel">
+      <div class="panel-heading">
+        <div>
+          <p class="panel-kicker">Bot Detection</p>
+          <h2>Known crawlers and scripted traffic</h2>
+        </div>
+      </div>
+      <div id="botDetectionSummary" class="stats-grid stats-grid-half"></div>
+      <section class="panel-grid secondary-grid bot-detection-grid">
+        <article class="panel bot-detection-panel">
+          <div class="panel-heading bot-detection-heading">
+            <div>
+              <p class="panel-kicker">Bot Sources</p>
+              <h2>Top Bot IPs</h2>
+            </div>
+          </div>
+          <div id="botIpList" class="top-paths"></div>
+        </article>
+        <article class="panel bot-detection-panel">
+          <div class="panel-heading bot-detection-heading">
+            <div>
+              <p class="panel-kicker">Bot Targets</p>
+              <h2>Most Hit Paths</h2>
+            </div>
+          </div>
+          <div id="botTargetList" class="top-paths"></div>
+        </article>
+      </section>
+    </section>
+
+    <!-- HTTP Errors breakdown -->
+    <section class="panel">
+      <div class="panel-heading">
+        <div>
+          <p class="panel-kicker">Errors</p>
+          <h2>HTTP Errors (4xx / 5xx)</h2>
+        </div>
+      </div>
+      <div id="errorBreakdown" class="error-breakdown"></div>
+      <div class="table-footer">
+        <div class="table-footer-left">
+          <span id="errorCount">0 entries</span>
+          <label class="per-page-label">Show
+            <select id="errorPerPage" class="per-page-select">
+              <option value="50" selected>50</option>
+              <option value="100">100</option>
+              <option value="200">200</option>
+            </select>
+          per page</label>
+        </div>
+        <div id="errorPagination" class="pagination"></div>
+      </div>
+    </section>
+
+    <section class="panel-grid secondary-grid">
+      <article class="panel">
+        <div class="panel-heading">
+          <div>
+            <p class="panel-kicker">Storage</p>
+            <h2 id="diskTopDirectoriesHeading">Largest Root Folders</h2>
+          </div>
+          <div id="diskHotspotsMeta" class="panel-heading-meta">Disk scan pending</div>
+        </div>
+        <div class="table-scroll">
+          <table class="data-table disk-usage-table">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Folder</th>
+                <th>Size</th>
+              </tr>
+            </thead>
+            <tbody id="diskTopDirectoriesRows">
+              <tr><td colspan="3" class="empty-state" style="border:none">Disk scan pending.</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="table-footer">
+          <span id="diskDirectoriesCount">0 entries</span>
+          <div id="diskDirectoriesPagination" class="pagination"></div>
+        </div>
+      </article>
+
+      <article class="panel">
+        <div class="panel-heading">
+          <div>
+            <p class="panel-kicker">Storage</p>
+            <h2 id="diskTopFilesHeading">Largest Files</h2>
+          </div>
+        </div>
+        <div class="table-scroll">
+          <table class="data-table disk-usage-table">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>File</th>
+                <th>Size</th>
+              </tr>
+            </thead>
+            <tbody id="diskTopFilesRows">
+              <tr><td colspan="3" class="empty-state" style="border:none">Disk scan pending.</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="table-footer">
+          <span id="diskFilesCount">0 entries</span>
+          <div id="diskFilesPagination" class="pagination"></div>
+        </div>
+      </article>
+
+      <article class="panel top-processes-panel">
+        <div class="panel-heading">
+          <div>
+            <p class="panel-kicker">CPU</p>
+            <h2 id="topProcessesHeading">Top Processes</h2>
+          </div>
+          <div id="topProcessesMeta" class="panel-heading-meta">Process sample pending</div>
+        </div>
+        <div class="table-scroll">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>PID</th>
+                <th>Service / Process</th>
+                <th>CPU</th>
+                <th>Memory</th>
+                <th>State</th>
+              </tr>
+            </thead>
+            <tbody id="topProcessesRows">
+              <tr><td colspan="5" class="empty-state" style="border:none">Process sample pending.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </article>
+    </section>
+
+    <section class="panel">
+      <div class="panel-heading">
+        <div>
+          <p class="panel-kicker">Alerts</p>
+          <h2>System Alerts</h2>
+        </div>
+      </div>
+      <div class="filter-bar">
+        <input type="text" id="systemAlertsSearch" class="filter-input" placeholder="Search severity, category, title, description..." />
+        <button id="systemAlertsFilterBtn" class="filter-button" type="button">Search</button>
+        <button id="systemAlertsClearBtn" class="filter-button filter-button-secondary" type="button">Clear</button>
+      </div>
+      <div id="systemAlertsHistory" class="error-breakdown"></div>
+      <div class="table-footer">
+        <div class="table-footer-left">
+          <span id="systemAlertsCount">0 entries</span>
+          <label class="per-page-label">Show
+            <select id="systemAlertsPerPage" class="per-page-select">
+              <option value="20" selected>20</option>
+              <option value="50">50</option>
+              <option value="100">100</option>
+              <option value="200">200</option>
+            </select>
+          per page</label>
+        </div>
+        <div id="systemAlertsPagination" class="pagination"></div>
+      </div>
+    </section>
+
+    </div><!-- end tab-logs -->
+
+    <!-- Containers tab -->
+    <div id="tab-containers" class="tab-content">
+
+    <!-- Container summary tiles -->
+    <section class="stats-grid" id="containerSummaryCards"></section>
+
+    <!-- Container table -->
+    <section class="panel">
+      <div class="panel-heading">
+        <div>
+          <p class="panel-kicker">Containers</p>
+          <h2 id="containerHeading">Container Health and Utilization</h2>
+        </div>
+        <div class="panel-heading-meta">
+          <span id="containerFreshnessBadge" class="pill panel-status-pill">Waiting for snapshot</span>
+          <span id="containerFreshnessMeta" class="muted-copy">Container rows update after each collector run.</span>
+        </div>
+      </div>
+      <div class="table-scroll">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Container</th>
+              <th>Status</th>
+              <th>Health</th>
+              <th>CPU</th>
+              <th>Memory</th>
+              <th>IP Address</th>
+              <th>Exposed</th>
+              <th>Restarts</th>
+              <th>Last Seen</th>
+              <th>Image</th>
+            </tr>
+          </thead>
+          <tbody id="containerRows"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Container resource charts -->
+    <section class="panel-grid charts-grid">
+      <article class="panel chart-panel">
+        <div class="panel-heading">
+          <div>
+            <p class="panel-kicker">Containers</p>
+            <h2>Memory Usage by Container</h2>
+          </div>
+        </div>
+        <div class="chart-wrap"><canvas id="containerMemChart"></canvas></div>
+      </article>
+      <article class="panel chart-panel">
+        <div class="panel-heading">
+          <div>
+            <p class="panel-kicker">Containers</p>
+            <h2>CPU Usage by Container</h2>
+          </div>
+        </div>
+        <div class="chart-wrap"><canvas id="containerCpuChart"></canvas></div>
+      </article>
+    </section>
+
+    <!-- Docker disk usage -->
+    <section class="panel">
+      <div class="panel-heading">
+        <div>
+          <p class="panel-kicker">Docker Engine</p>
+          <h2>Disk Usage Breakdown</h2>
+        </div>
+      </div>
+      <div class="docker-disk-grid" id="dockerDiskUsage"></div>
+    </section>
+
+    <section class="panel-grid charts-grid">
+      <article class="panel chart-panel">
+        <div class="panel-heading">
+          <div>
+            <p class="panel-kicker">Storage</p>
+            <h2>Volume Growth Over Time</h2>
+          </div>
+          <div id="volumeGrowthMeta" class="panel-heading-meta">Waiting for storage trend data</div>
+        </div>
+        <section id="storageGrowthSummary" class="stats-grid"></section>
+        <div class="chart-wrap"><canvas id="volumeGrowthChart"></canvas></div>
+      </article>
+      <article class="panel chart-panel">
+        <div class="panel-heading">
+          <div>
+            <p class="panel-kicker">Storage</p>
+            <h2>Log Growth Over Time</h2>
+          </div>
+          <div id="logGrowthMeta" class="panel-heading-meta">Waiting for storage trend data</div>
+        </div>
+        <div class="chart-wrap"><canvas id="logGrowthChart"></canvas></div>
+      </article>
+    </section>
+
+    <!-- Docker images -->
+    <section class="panel-grid secondary-grid">
+      <article class="panel">
+        <div class="panel-heading">
+          <div>
+            <p class="panel-kicker">Docker</p>
+            <h2 id="dockerImagesHeading">Images</h2>
+          </div>
+        </div>
+        <div class="table-scroll">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Image</th>
+                <th>Size</th>
+                <th>Created</th>
+                <th>Containers</th>
+              </tr>
+            </thead>
+            <tbody id="dockerImageRows"></tbody>
+          </table>
+        </div>
+      </article>
+
+      <article class="panel">
+        <div class="panel-heading">
+          <div>
+            <p class="panel-kicker">Docker</p>
+            <h2 id="dockerNetworksHeading">Networks</h2>
+          </div>
+        </div>
+        <div class="table-scroll">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Network</th>
+                <th>Driver</th>
+                <th>Scope</th>
+                <th>Connected Containers</th>
+              </tr>
+            </thead>
+            <tbody id="dockerNetworkRows"></tbody>
+          </table>
+        </div>
+      </article>
+    </section>
+
+    <!-- Docker volumes -->
+    <section class="panel">
+      <div class="panel-heading">
+        <div>
+          <p class="panel-kicker">Docker</p>
+          <h2 id="dockerVolumesHeading">Volumes</h2>
+        </div>
+      </div>
+      <div class="table-scroll">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Volume</th>
+              <th>Driver</th>
+              <th>Mountpoint</th>
+            </tr>
+          </thead>
+          <tbody id="dockerVolumeRows"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-heading">
+        <div>
+          <p class="panel-kicker">Deployment Config</p>
+          <h2>Docker Compose and Host Configuration</h2>
+        </div>
+      </div>
+      <div id="configSummaryCards" class="stats-grid stats-grid-half"></div>
+      <div class="config-explorer-grid">
+        <article class="config-sidebar">
+          <div class="config-sidebar-header">
+            <strong>Files</strong>
+            <span id="configRootLabel" class="config-root-label"></span>
+          </div>
+          <div id="configComposeSummary" class="config-chip-list"></div>
+          <div id="configFileList" class="config-file-list"></div>
+        </article>
+        <article class="config-viewer-panel">
+          <div class="config-viewer-header">
+            <div>
+              <p id="configViewerPath" class="panel-kicker">Select a file</p>
+              <h3 id="configViewerTitle">Configuration Viewer</h3>
+            </div>
+            <div id="configViewerMeta" class="config-viewer-meta"></div>
+          </div>
+          <pre id="configViewerContent" class="config-viewer-content">Select a configuration file from the list to inspect its actual contents.</pre>
+        </article>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-heading">
+        <div>
+          <p class="panel-kicker">Edge Proxy</p>
+          <h2>Edge Caddy Overview</h2>
+        </div>
+      </div>
+      <div id="caddySummaryCards" class="stats-grid stats-grid-half"></div>
+      <section class="panel-grid secondary-grid">
+        <article class="panel">
+          <div class="panel-heading">
+            <div>
+              <p class="panel-kicker">Routing</p>
+              <h2 id="caddyHostsHeading">Configured Hosts</h2>
+            </div>
+          </div>
+          <div id="caddyHostsList" class="caddy-sites-grid"></div>
+        </article>
+        <article class="panel">
+          <div class="panel-heading">
+            <div>
+              <p class="panel-kicker">TLS</p>
+              <h2 id="caddyCertHeading">Certificates</h2>
+            </div>
+          </div>
+          <div class="table-scroll">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Certificate</th>
+                  <th>Issuer</th>
+                  <th>Valid From</th>
+                  <th>Valid To</th>
+                  <th>Renewal</th>
+                </tr>
+              </thead>
+              <tbody id="caddyCertRows"></tbody>
+            </table>
+          </div>
+        </article>
+      </section>
+    </section>
+
+    <section class="panel">
+      <div class="panel-heading">
+        <div>
+          <p class="panel-kicker">Operations</p>
+          <h2>Deploy, Config, and Restart Timeline</h2>
+        </div>
+      </div>
+      <div id="operationsTimeline" class="timeline-list"></div>
+    </section>
+
+    <!-- Container Logs (searchable) -->
+    <section class="panel">
+      <div class="panel-heading">
+        <div>
+          <p class="panel-kicker">Container Logs</p>
+          <h2>Warnings and Errors</h2>
+        </div>
+      </div>
+      <div class="filter-bar">
+        <input type="text" id="logSearch" class="filter-input" placeholder="Search log messages..." />
+        <select id="logLevelFilter" class="filter-select">
+          <option value="">All Levels</option>
+          <option value="fatal">Fatal</option>
+          <option value="error">Error</option>
+          <option value="warn">Warning</option>
+          <option value="info">Info</option>
+        </select>
+        <button id="logFilterBtn" class="filter-button" type="button">Search</button>
+        <button id="logClearBtn" class="filter-button filter-button-secondary" type="button">Clear</button>
+      </div>
+      <div id="importantLogs" class="log-stream"></div>
+      <div class="table-footer">
+        <span id="logCount">0 entries</span>
+      </div>
+    </section>
+
+    <!-- Live Tails -->
+    <section class="panel">
+      <div class="panel-heading">
+        <div>
+          <p class="panel-kicker">Live Tail</p>
+          <h2>Selected Container Logs</h2>
+        </div>
+      </div>
+      <div class="filter-bar">
+        <input type="text" id="tailSearch" class="filter-input" placeholder="Search container logs..." />
+        <button id="tailClearBtn" class="filter-button filter-button-secondary" type="button">Clear</button>
+      </div>
+      <div id="liveTails" class="tail-grid"></div>
+    </section>
+    </div><!-- end tab-containers -->
+  </main>
+  </div>
+</body>
+</html>

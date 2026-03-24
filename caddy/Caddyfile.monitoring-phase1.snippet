@@ -1,0 +1,33 @@
+{$MONITORING_DOMAIN} {
+    encode zstd gzip
+
+    log {
+        output file /var/log/caddy/monitoring-access.log {
+            roll_size 50MiB
+            roll_keep 10
+            roll_keep_for 336h
+        }
+        format json
+    }
+
+    tls {$CADDY_ACME_EMAIL}
+
+    handle {
+        reverse_proxy monitoring_tool:8080
+    }
+
+    header {
+        -Server
+        -Via
+        -X-Powered-By
+    }
+
+    header {
+        Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+        X-Content-Type-Options "nosniff"
+        X-Frame-Options "SAMEORIGIN"
+        Referrer-Policy "strict-origin-when-cross-origin"
+        Cross-Origin-Opener-Policy "same-origin"
+        Cross-Origin-Resource-Policy "same-origin"
+    }
+}

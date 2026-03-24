@@ -1,0 +1,11 @@
+.env
+*.log
+
+# Local compose/runtime files
+docker-compose/.env
+data/
+
+# OS/editor noise
+.DS_Store
+Thumbs.db
+.vscode/

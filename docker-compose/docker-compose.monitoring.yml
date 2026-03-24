@@ -1,0 +1,33 @@
+services:
+  monitoring_tool:
+    build:
+      context: ..
+    image: linux-host-monitor:latest
+    container_name: monitoring_tool
+    restart: unless-stopped
+    env_file:
+      - .env.example
+    environment:
+      PORT: 3000
+      DB_PATH: /data/monitor.db
+      DATA_RETENTION_DAYS: ${DATA_RETENTION_DAYS:-7}
+      COLLECTION_INTERVAL_MS: ${COLLECTION_INTERVAL_MS:-180000}
+      HOST_COLLECTION_INTERVAL_MS: ${HOST_COLLECTION_INTERVAL_MS:-30000}
+      CADDY_LOG_DIR: /host-caddy-logs
+      CONFIG_ROOT_PATH: ${CONFIG_ROOT_PATH:-/host-root}
+      CONTAINER_LOG_ROOT: /var/lib/docker/containers
+      SELECTED_LOG_CONTAINERS: ${SELECTED_LOG_CONTAINERS:-}
+      SERVICE_PROBES: ${SERVICE_PROBES:-}
+    ports:
+      - "${MONITORING_PORT:-8080}:8080"
+    volumes:
+      - monitoring_tool_data:/data
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/host-root:ro
+      - ${HOST_CADDY_LOG_DIR:-/var/log/caddy}:/host-caddy-logs:ro
+      - ${HOST_CONTAINER_LOG_ROOT:-/var/lib/docker/containers}:/var/lib/docker/containers:ro
+
+volumes:
+  monitoring_tool_data:
