@@ -111,7 +111,7 @@ On Ubuntu, install the base packages first:
 
 ```bash
 sudo apt update
-sudo apt install -y git ca-certificates curl python3 python3-pip
+sudo apt install -y git ca-certificates curl python3 python3-pip python3-venv
 ```
 
 For Docker, use one of these approaches:
@@ -155,7 +155,9 @@ If your checklist expects a requirements command, run it after cloning:
 
 ```bash
 cd /opt/linux-host-monitor
-python3 -m pip install -r requirements.txt
+python3 -m venv .venv
+. .venv/bin/activate
+pip install -r requirements.txt
 ```
 
 Right now this installs nothing because the file is intentionally empty.
@@ -164,7 +166,7 @@ Right now this installs nothing because the file is intentionally empty.
 
 - you do not need to run `npm install`
 - you do not need Node.js or Python installed on the host just to run the container
-- `python3 -m pip install -r requirements.txt` is optional and currently installs nothing
+- the virtualenv `pip install -r requirements.txt` step is optional and currently installs nothing
 
 The Docker build handles the application runtime for you.
 
@@ -307,8 +309,29 @@ Then rerun:
 
 ```bash
 cd /opt/linux-host-monitor
-python3 -m pip install -r requirements.txt
+python3 -m venv .venv
+. .venv/bin/activate
+pip install -r requirements.txt
 ```
+
+### `python3 -m pip install -r requirements.txt` fails with `externally-managed-environment`
+
+This is expected on newer Ubuntu releases that enforce PEP 668 for the system Python environment.
+
+Do not use `--break-system-packages` for this repository.
+
+Use a virtual environment instead:
+
+```bash
+sudo apt update
+sudo apt install -y python3-venv python3-pip
+cd /opt/linux-host-monitor
+python3 -m venv .venv
+. .venv/bin/activate
+pip install -r requirements.txt
+```
+
+For this repository, that command still installs nothing because `requirements.txt` is intentionally empty.
 
 ### `docker compose` is not found
 
