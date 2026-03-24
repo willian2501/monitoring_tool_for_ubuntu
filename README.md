@@ -7,6 +7,24 @@
 
 Lightweight self-hosted monitoring for Ubuntu and other Linux Docker hosts, focused on host health, container visibility, storage diagnostics, and optional log analytics.
 
+## Install
+
+```bash
+sudo apt update
+sudo apt install -y git ca-certificates curl
+cd /opt
+sudo git clone https://github.com/willian2501/monitoring_tool_for_ubuntu.git linux-host-monitor
+cd /opt/linux-host-monitor
+
+# Optional: kept for platforms that expect a requirements step.
+# This file is currently empty, so this command installs nothing.
+python3 -m pip install -r requirements.txt
+
+cd docker-compose
+cp .env.example .env
+docker compose -f docker-compose.monitoring.yml up -d --build
+```
+
 ## Screenshot
 
 ![Dashboard preview](docs/assets/dashboard-preview.svg)
@@ -95,9 +113,9 @@ Optional:
 - access to `/var/lib/docker/containers` for important log entries and live tails
 - a reverse proxy such as Caddy
 
-There is no separate `npm install` or `pip install` step for normal usage.
+There is no required `npm install` step for normal usage.
 
-The application runtime is built inside the Docker image, and `requirements.txt` exists only to document that there are no Python package dependencies for this repository.
+The application runtime is built inside the Docker image. The `requirements.txt` file is currently empty and exists mainly for tooling or platforms that expect a dependency-install step.
 
 ## Quick Start
 
@@ -133,8 +151,8 @@ If you prefer a different folder, that is fine. The docs use `/opt/linux-host-mo
 ### 3. Review what does and does not need to be installed
 
 - you do not need to run `npm install`
-- you do not need to run `pip install -r requirements.txt`
 - you do not need Node.js or Python installed on the host just to run the container
+- `python3 -m pip install -r requirements.txt` is optional and currently installs nothing
 
 The Docker build handles the application runtime for you.
 
@@ -225,7 +243,7 @@ The project intentionally does not ship its own login screen.
 - `caddy/` optional reverse-proxy example
 - `cloudflare/` optional access-control guidance
 - `Setup_custom_tool.md` deployment notes
-- `KNOWN_ME.md` operator-focused quick notes
+- `requirements.txt` optional empty dependency manifest for tooling compatibility
 
 ## Documentation
 

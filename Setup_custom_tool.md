@@ -50,6 +50,14 @@ git --version
 
 This project does not require a separate host-side `npm install` or `pip install`. The runtime is built inside Docker.
 
+If your automation or hosting checklist expects a requirements-install command, you can run:
+
+```bash
+python3 -m pip install -r /opt/linux-host-monitor/requirements.txt
+```
+
+Right now that command installs nothing because the manifest is intentionally empty.
+
 ## 2. Clone the repository to the host
 
 ```bash
