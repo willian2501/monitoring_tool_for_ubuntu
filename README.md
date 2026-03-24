@@ -11,7 +11,7 @@ Lightweight self-hosted monitoring for Ubuntu and other Linux Docker hosts, focu
 
 ## Screenshot
 
-![Dashboard preview](docs/assets/dashboard-preview.svg)
+![Dashboard preview](docs/assets/dashboard-preview.png)
 
 Example dashboard layout showing host summary cards, time-range controls, CPU and memory charts, traffic charts, and request summary cards.
 
